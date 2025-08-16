@@ -84,28 +84,23 @@ function analyzeSalesData(data, options) {
             const revenue = +calculateRevenue(item);
             const profit = revenue - cost;
             seller.profit += profit;
-
-
       
             if (!seller.products_sold[item.sku]) {
                 seller.products_sold[item.sku] = 0;
             }
             seller.products_sold[item.sku] += item.quantity;
-        
         });
-
 
         seller.sales_count++;
         seller.revenue += record.total_amount;
-        seller.profit = +seller.profit.toFixed(2);
-        seller.revenue = +seller.revenue.toFixed(2);
-
     });
     let sellerStats = Object.values(sellerIndex).sort((a, b) => b.profit - a.profit);
    
     sellerStats.forEach((seller, index) => {
         seller.bonus = +calculateBonus(index, sellerStats.length, seller).toFixed(2);
         
+        seller.profit = +seller.profit.toFixed(2);
+        seller.revenue = +seller.revenue.toFixed(2); 
         seller.top_products = Object.entries(seller.products_sold)
             .map(([sku, quantity]) => ({
                 sku,
