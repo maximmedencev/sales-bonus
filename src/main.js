@@ -5,7 +5,10 @@
  * @returns {number}
  */
 function calculateSimpleRevenue(purchase, _product) {
-   // @TODO: Расчет выручки от операции
+       // purchase — это одна из записей в поле items из чека в data.purchase_records
+   // _product — это продукт из коллекции data.products
+      const { discount, sale_price, quantity } = purchase;
+      return (sale_price * quantity) * (1 - (discount / 100));
 }
 
 /**
@@ -16,7 +19,20 @@ function calculateSimpleRevenue(purchase, _product) {
  * @returns {number}
  */
 function calculateBonusByProfit(index, total, seller) {
-    // @TODO: Расчет бонуса от позиции в рейтинге
+          
+    let bonusPercent;
+    
+    if (index === 0) {
+        bonusPercent = 0.15;
+    } else if (index === 1 || index === 2) {
+        bonusPercent = 0.10; 
+    } else if (index === total - 1) {
+        bonusPercent = 0; 
+    } else {
+        bonusPercent = 0.05; 
+    }
+
+    return seller.profit * bonusPercent;
 }
 
 /**
@@ -26,19 +42,81 @@ function calculateBonusByProfit(index, total, seller) {
  * @returns {{revenue, top_products, bonus, name, sales_count, profit, seller_id}[]}
  */
 function analyzeSalesData(data, options) {
-    // @TODO: Проверка входных данных
 
-    // @TODO: Проверка наличия опций
+    if (typeof options != "object") {
+        throw new Error(`Отсутствуют опции`);
+    }
 
-    // @TODO: Подготовка промежуточных данных для сбора статистики
+    const { calculateRevenue, calculateBonus } = options;
 
-    // @TODO: Индексация продавцов и товаров для быстрого доступа
+    if (!calculateRevenue) {
+        throw new Error(`calculateRevenue отсутвует в опциях`);
+    }
 
-    // @TODO: Расчет выручки и прибыли для каждого продавца
+    if (!calculateBonus) {
+        throw new Error(`calculateBonus отсутвует в опциях`);
+    }
 
-    // @TODO: Сортировка продавцов по прибыли
+    if(typeof calculateRevenue != "function") {
+        throw new Error(`calculateRevenue не функция`);
+    }
 
-    // @TODO: Назначение премий на основе ранжирования
+    if(typeof calculateBonus != "function") {
+        throw new Error(`calculateBonus не функция`);
+    }
+ 
+    const requiredCollections = ['customers', 'products', 'sellers', 'purchase_records'];
+    for (const collection of requiredCollections) {
+        if (!Array.isArray(data[collection] || data[collection].length === 0)) {
+            throw new Error(`Отсутсвует ${collection}`);
+        }
+    }
 
-    // @TODO: Подготовка итоговой коллекции с нужными полями
+    let sellerIndex = Object.fromEntries(data.sellers.map(seller => [seller.id, {id: seller.id, name: `${seller.first_name} ${seller.last_name}`, revenue: 0, profit: 0, sales_count: 0, products_sold:[]}]));
+    let productIndex = Object.fromEntries(data.products.map(product => [product.sku, product]));
+    
+    data.purchase_records.forEach(record => {
+        const seller = sellerIndex[record.seller_id];
+
+        record.items.forEach(item => {
+            const product = productIndex[item.sku];
+            const cost = product.purchase_price * item.quantity;
+            const revenue = +calculateRevenue(item);
+            const profit = revenue - cost;
+            seller.profit += profit;
+
+
+      
+            if (!seller.products_sold[item.sku]) {
+                seller.products_sold[item.sku] = 0;
+            }
+            seller.products_sold[item.sku] += item.quantity;
+        
+        });
+
+
+        seller.sales_count++;
+        seller.revenue += record.total_amount;
+        seller.profit = +seller.profit.toFixed(2);
+        seller.revenue = +seller.revenue.toFixed(2);
+
+    });
+    let sellerStats = Object.values(sellerIndex).sort((a, b) => b.profit - a.profit);
+   
+    sellerStats.forEach((seller, index) => {
+        seller.bonus = +calculateBonus(index, sellerStats.length, seller).toFixed(2);
+        
+        seller.top_products = Object.entries(seller.products_sold)
+            .map(([sku, quantity]) => ({
+                sku,
+                quantity
+        }))
+        .sort((a,b) => b.quantity - a.quantity)
+        .slice(0, 10);
+
+        delete seller.products_sold;
+
+    });
+
+    return sellerStats;
 }
