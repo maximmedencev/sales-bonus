@@ -67,9 +67,14 @@ function analyzeSalesData(data, options) {
  
     const requiredCollections = ['customers', 'products', 'sellers', 'purchase_records'];
     for (const collection of requiredCollections) {
-        if (!Array.isArray(data[collection] || data[collection].length === 0)) {
+        console.log(data[collection].length);
+        if (!Array.isArray(data[collection])) {
             throw new Error(`Отсутсвует ${collection}`);
         }
+        if (data[collection].length === 0) {
+            throw new Error(`Массив ${collection} не должен быть пустым`);
+        }
+        
     }
 
     let sellerIndex = Object.fromEntries(data.sellers.map(seller => [seller.id, {id: seller.id, name: `${seller.first_name} ${seller.last_name}`, revenue: 0, profit: 0, sales_count: 0, products_sold:[]}]));
@@ -90,6 +95,7 @@ function analyzeSalesData(data, options) {
             }
             seller.products_sold[item.sku] += item.quantity;
         });
+
 
         seller.sales_count++;
         seller.revenue += record.total_amount;
